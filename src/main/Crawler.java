@@ -4,27 +4,52 @@ import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * Created by MeltedPenguin on 13/01/2017.
  */
 public class Crawler {
 
+    static public int MAX_LEVEL = 3;
     static public String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
+    static private List<URL> urls = new ArrayList<>();
 
-    public static void crawler(String url) {
+    public static void crawler(String url, int maxLevel) {
+        if (maxLevel <= 0) return;
+
         try {
             Document doc = Jsoup.connect(url).get();
             doc.select("a").forEach((e) -> {
                 String href = e.attr("href");
+                URL newUrl = null;
                 if (href.matches(URL_MATCH_REGEX)) {
-                    System.out.println("Absolute link: " + href);
+                    try {
+                        newUrl = new URL(href);
+                    } catch (MalformedURLException e1) {
+                        e1.printStackTrace();
+                    }
+                    Main.logger.trace("Absolute link: " + href);
                 } else {
-                    String separator = href.startsWith("/") ? "" : "/";
-                    System.out.println("Relative link: " + url + separator + href);
+                    try {
+                        newUrl = new URL(new URL(url), href);
+                    } catch (MalformedURLException e1) {
+                        e1.printStackTrace();
+                    }
+                    Main.logger.trace("Relative link: " + newUrl);
+                }
+
+                if (newUrl != null && !urls.contains(newUrl)) {
+                    System.out.println(newUrl);
+                    urls.add(newUrl);
+                    crawler(newUrl.toString(), maxLevel - 1);
                 }
             });
-        } catch (IOException e) {
+        } catch (Exception e) {
+            Main.logger.error(url);
             e.printStackTrace();
         }
     }
