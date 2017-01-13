@@ -14,11 +14,17 @@ import java.util.List;
  */
 public class Crawler {
 
-    static public int MAX_LEVEL = 3;
-    static public String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
-    static private List<URL> urls = new ArrayList<>();
+    static int MAX_LEVEL = 3;
+    static private String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
+    static private List<URL> urls;
 
-    public static void crawler(String url, int maxLevel) {
+    public static List<URL> crawler(String url) {
+        urls = new ArrayList<>();
+        crawler(url, MAX_LEVEL);
+        return urls;
+    }
+
+    private static void crawler(String url, int maxLevel) {
         if (maxLevel <= 0) return;
 
         try {
