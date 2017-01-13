@@ -3,7 +3,6 @@
   <component name="ProjectModuleManager">
     <modules>
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.epita.iml" filepath="$PROJECT_DIR$/.idea/modules/com.epita.iml" />
-      <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.epita_main.iml" filepath="$PROJECT_DIR$/.idea/modules/com.epita_main.iml" group="com.epita" />
       <module fileurl="file://$PROJECT_DIR$/.idea/modules/com.epita_test.iml" filepath="$PROJECT_DIR$/.idea/modules/com.epita_test.iml" group="com.epita" />
     </modules>
   </component>

@@ -1,3 +1,5 @@
+package main;
+
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 
@@ -8,7 +10,7 @@ import java.io.IOException;
  */
 public class Crawler {
 
-    static public String URL_MATCH_REGEX = "((http(s)?:\\/\\/.)|(www\\.)).*";
+    static public String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
     public static void crawler(String url) {
         try {
@@ -19,7 +21,6 @@ public class Crawler {
                     System.out.println("Absolute link: " + href);
                 } else {
                     String separator = href.startsWith("/") ? "" : "/";
-                    System.out.println(href);
                     System.out.println("Relative link: " + url + separator + href);
                 }
             });
