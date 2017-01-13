@@ -28,7 +28,7 @@ public class Crawler {
         if (maxLevel <= 0) return;
 
         try {
-            Document doc = Jsoup.connect(url).get();
+            Document doc = Jsoup.connect(url).ignoreContentType(true).get();
             doc.select("a").forEach((e) -> {
                 String href = e.attr("href");
                 URL newUrl = null;
