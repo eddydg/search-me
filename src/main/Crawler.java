@@ -26,6 +26,8 @@ public class Crawler {
             doc.select("a").forEach((e) -> {
                 String href = e.attr("href");
                 URL newUrl = null;
+
+                // Absolute link
                 if (href.matches(URL_MATCH_REGEX)) {
                     try {
                         newUrl = new URL(href);
@@ -33,7 +35,9 @@ public class Crawler {
                         e1.printStackTrace();
                     }
                     Main.logger.trace("Absolute link: " + href);
-                } else {
+                }
+                // Relative link
+                else {
                     try {
                         newUrl = new URL(new URL(url), href);
                     } catch (MalformedURLException e1) {
@@ -43,7 +47,6 @@ public class Crawler {
                 }
 
                 if (newUrl != null && !urls.contains(newUrl)) {
-                    System.out.println(newUrl);
                     urls.add(newUrl);
                     crawler(newUrl.toString(), maxLevel - 1);
                 }
