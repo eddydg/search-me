@@ -81,14 +81,14 @@ public class Indexer {
     public static Map<String, Double> tfidf(List<List<String>> input) {
         Map<String, Double> frequencies = new HashMap<>();
 
-        for (List<String> doc: input) {
-            for (String word: doc) {
-                if (!frequencies.containsKey(word)) {
-                    double v = Math.log(getWordFrequency(word, doc) * getInverseWordsFrequencies(word, input));
-                    frequencies.put(word, v);
-                }
-            }
-        }
+        input.forEach(doc ->
+            doc.parallelStream()
+                    .filter(word -> !frequencies.containsKey(word))
+                    .forEach(word -> {
+                        double v = Math.log(getWordFrequency(word, doc) * getInverseWordsFrequencies(word, input));
+                        frequencies.put(word, v);
+                    })
+        );
 
         return frequencies;
     }

@@ -12,6 +12,7 @@ public class Main {
     public static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) {
+        logger.trace("Start app");
         //List<URL> urls = Crawler.crawler("https://fr.wikipedia.org/wiki/Lidar");
 
         String input1 = "Python is a 2000 made-for-TV horror movie directed by Richard\n" +
@@ -52,5 +53,6 @@ public class Main {
         System.out.println(frequencies.get("colt"));
 
         //tokens.forEach(t -> System.out.println(Indexer.reduce(t)));
+        logger.trace("End app");
     }
 }
