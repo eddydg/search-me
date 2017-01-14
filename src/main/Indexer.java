@@ -35,9 +35,8 @@ public class Indexer {
         return doc.text();
     }
 
-    public static List<String> tokenize(String input) {
+    public static Stream<String> tokenize(String input) {
         String[] words = input.toLowerCase().split("\\W+");
-        List<String> res = new ArrayList<>(Arrays.asList(words));
 
         File file = new File(STOP_WORDS_FILE);
         FileInputStream fis = null;
@@ -48,12 +47,13 @@ public class Indexer {
             fis.close();
 
             Set<String> stopWords = new HashSet<>(Arrays.asList(new String(data, "UTF-8").split("\n")));
-            res = res.stream().filter(w -> !stopWords.contains(w)).collect(Collectors.toList());
+            return Arrays.stream(words).filter(w -> !stopWords.contains(w));
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        return res;
+        Stream.Builder<String> b = Stream.builder();
+        return b.build();
     }
 
     public static String reduce(String input) {
@@ -73,12 +73,7 @@ public class Indexer {
     public static long getInverseWordsFrequencies(String word, List<List<String>> input) {
         long d = input.size();
         if (d == 0) return 0;
-        long count = 0;
-        for (List<String> doc: input) {
-            if (doc.contains(word)) {
-                count++;
-            }
-        }
+        long count = input.parallelStream().filter(doc -> doc.contains(word)).count();
 
         return d / count;
     }
