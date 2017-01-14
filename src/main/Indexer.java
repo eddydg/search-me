@@ -7,6 +7,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 /**
  * Created by MeltedPenguin on 13/01/2017.
@@ -63,6 +64,38 @@ public class Indexer {
         }
 
         return input;
+    }
+
+    public static long getWordFrequency(String word, List<String> input) {
+        return Collections.frequency(input, word);
+    }
+
+    public static long getInverseWordsFrequencies(String word, List<List<String>> input) {
+        long d = input.size();
+        if (d == 0) return 0;
+        long count = 0;
+        for (List<String> doc: input) {
+            if (doc.contains(word)) {
+                count++;
+            }
+        }
+
+        return d / count;
+    }
+
+    public static Map<String, Double> tfidf(List<List<String>> input) {
+        Map<String, Double> frequencies = new HashMap<>();
+
+        for (List<String> doc: input) {
+            for (String word: doc) {
+                if (!frequencies.containsKey(word)) {
+                    double v = Math.log(getWordFrequency(word, doc) * getInverseWordsFrequencies(word, input));
+                    frequencies.put(word, v);
+                }
+            }
+        }
+
+        return frequencies;
     }
 
 }
