@@ -10,6 +10,8 @@ import org.jsoup.nodes.Document;
 import java.io.*;
 import java.net.URL;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -107,12 +109,12 @@ public class Indexer {
         return input.getTokens().stream().filter(t -> t.getValue().equals(token.getValue())).count();
     }
 
-    public static long getInverseWordsFrequencies(Token token, List<Doc> input) {
-        long d = input.size();
+    public static double getInverseWordsFrequencies(Token token, List<Doc> input) {
+        long d = input.stream().map(doc -> doc.getTokens().size()).count();
         if (d == 0) return 0;
         long count = input.parallelStream().filter(doc -> doc.containsWord(token.getValue())).count();
 
-        return d / count;
+        return 1 + Math.log(d / count);
     }
 
     public static Index tfidf(List<Doc> docs) {
