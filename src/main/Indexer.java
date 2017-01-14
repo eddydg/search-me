@@ -1,5 +1,8 @@
 package main;
 
+import main.Models.Doc;
+import main.Models.Index;
+import main.Models.Token;
 import org.jsoup.Jsoup;
 import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
@@ -8,6 +11,7 @@ import java.io.*;
 import java.net.URL;
 import java.util.*;
 import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -20,13 +24,12 @@ public class Indexer {
 
     public HashMap<String, Integer> index;
 
-    public static Map<String, Double> run(Stream<URL> urls) {
-        List<List<String>> res =  urls
+    public static Index run(Stream<URL> urls) {
+        List<Doc> res =  urls
                 .map(Indexer::fetchBody)
                 .map(Indexer::tokenize)
                 .map(Indexer::cleanup)
                 .map(Indexer::reduce)
-                .map(doc -> doc.collect(Collectors.toList()))
                 .collect(Collectors.toList());
 
         return tfidf(res);
@@ -45,16 +48,17 @@ public class Indexer {
         return content;
     }
 
-    public static Stream<String> cleanup(Stream<String> input) {
+    public static Stream<Token> cleanup(Stream<Token> input) {
         return input.map(Indexer::cleanup);
     }
 
-    public static String cleanup(String input) {
-        Document doc = Jsoup.parse(input);
-        return doc.text();
+    public static Token cleanup(Token token) {
+        Document doc = Jsoup.parse(token.getValue());
+        token.setValue(doc.text());
+        return token;
     }
 
-    public static Stream<String> tokenize(String input) {
+    public static Stream<Token> tokenize(String input) {
         String[] words = input.toLowerCase().split("\\W+");
 
         File file = new File(STOP_WORDS_FILE);
@@ -66,54 +70,68 @@ public class Indexer {
             fis.close();
 
             Set<String> stopWords = new HashSet<>(Arrays.asList(new String(data, "UTF-8").split("\n")));
-            return Arrays.stream(words).filter(w -> !stopWords.contains(w));
+
+            return IntStream.range(0, words.length)
+                    .filter(i -> !stopWords.contains(words[i]))
+                    .mapToObj(i -> new Token(words[i], 0, i));
+
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        Stream.Builder<String> b = Stream.builder();
+        Stream.Builder<Token> b = Stream.builder();
         return b.build();
     }
 
-    public static Stream<String> reduce(Stream<String> input) {
-        return input.map(Indexer::reduce);
+    public static Doc reduce(Stream<Token> input) {
+        return new Doc(input.map(Indexer::reduce).collect(Collectors.toList()));
     }
 
-    public static String reduce(String input) {
+    public static Token reduce(Token token) {
         for (String s: suffixesToStrip) {
-            if (input.endsWith(s)) {
-                return input.substring(0, input.length() - s.length());
+            String w = token.getValue();
+            if (w.endsWith(s)) {
+                token.setValue(w.substring(0, w.length() - s.length()));
+                return token;
             }
         }
 
-        return input;
+        return token;
     }
 
-    public static long getWordFrequency(String word, List<String> input) {
-        return Collections.frequency(input, word);
+    public static long getWordFrequency(Token token, Doc input) {
+        return input.getTokens().stream().filter(t -> t.getValue().equals(token.getValue())).count();
     }
 
-    public static long getInverseWordsFrequencies(String word, List<List<String>> input) {
+    public static long getInverseWordsFrequencies(Token token, List<Doc> input) {
         long d = input.size();
         if (d == 0) return 0;
-        long count = input.parallelStream().filter(doc -> doc.contains(word)).count();
+        long count = input.parallelStream().filter(doc -> doc.containsWord(token.getValue())).count();
 
         return d / count;
     }
 
-    public static Map<String, Double> tfidf(List<List<String>> input) {
-        Map<String, Double> frequencies = new HashMap<>();
+    public static Index tfidf(List<Doc> docs) {
+        HashMap<String, Double> frequencies = new HashMap<>();
+        Index index = new Index(docs, frequencies);
 
-        input.forEach(doc ->
-            doc.parallelStream()
-                    .filter(word -> !frequencies.containsKey(word))
-                    .forEach(word -> {
-                        double v = Math.log(getWordFrequency(word, doc) * getInverseWordsFrequencies(word, input));
-                        frequencies.put(word, v);
+        docs.forEach(doc ->
+            doc.getTokens().parallelStream()
+                    .filter(token -> !frequencies.containsKey(token.getValue()))
+                    .forEach(token -> {
+                        double f;
+                        if (frequencies.containsKey(token.getValue()))
+                            f = frequencies.get(token.getValue());
+                        else {
+                            f = Math.log(getWordFrequency(token, doc) * getInverseWordsFrequencies(token, docs));
+                            frequencies.put(token.getValue(), f);
+                        }
+                        token.setFrequence(f);
                     })
         );
+        index.setFrequencies(frequencies);
 
-        return frequencies;
+        return index;
     }
 
 }

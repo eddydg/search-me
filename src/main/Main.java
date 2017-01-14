@@ -1,5 +1,7 @@
 package main;
 
+import main.Models.Index;
+import main.Models.Token;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
@@ -19,8 +21,11 @@ public class Main {
         List<URL> urls = null;
         try {
             urls = Crawler.crawler(new URL("https://en.wikipedia.org/wiki/Lidar"));
-            Map<String, Double> index = Indexer.run(urls.stream());
-            index.forEach((k,v) -> System.out.println(k + " = " + v));
+            Index index = Indexer.run(urls.stream());
+            System.out.println(index.getDocs().size());
+            for (Token token: index.getDocs().get(0).getTokens())
+                System.out.println(token.getPosition() + ": " + token.getValue() + "(" + token.getFrequence() + ")");
+
         } catch (MalformedURLException e) {
             e.printStackTrace();
         }
