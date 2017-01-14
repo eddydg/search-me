@@ -1,6 +1,7 @@
 package main;
 
 import org.jsoup.Jsoup;
+import org.jsoup.UnsupportedMimeTypeException;
 import org.jsoup.nodes.Document;
 
 import java.io.*;
@@ -19,15 +20,33 @@ public class Indexer {
 
     public HashMap<String, Integer> index;
 
+    public static Map<String, Double> run(Stream<URL> urls) {
+        List<List<String>> res =  urls
+                .map(Indexer::fetchBody)
+                .map(Indexer::tokenize)
+                .map(Indexer::cleanup)
+                .map(Indexer::reduce)
+                .map(doc -> doc.collect(Collectors.toList()))
+                .collect(Collectors.toList());
+
+        return tfidf(res);
+    }
+
     public static String fetchBody(URL url) {
         String content = "";
         try {
             Document doc = Jsoup.connect(url.toString()).get();
             content = doc.text();
+        } catch (UnsupportedMimeTypeException e) {
+            Main.logger.warn("Unsupported Mime Type: " + url);
         } catch (IOException e) {
-            e.printStackTrace();
+            Main.logger.warn("HTTP error fetching URL: " + url);
         }
         return content;
+    }
+
+    public static Stream<String> cleanup(Stream<String> input) {
+        return input.map(Indexer::cleanup);
     }
 
     public static String cleanup(String input) {
@@ -54,6 +73,10 @@ public class Indexer {
 
         Stream.Builder<String> b = Stream.builder();
         return b.build();
+    }
+
+    public static Stream<String> reduce(Stream<String> input) {
+        return input.map(Indexer::reduce);
     }
 
     public static String reduce(String input) {
