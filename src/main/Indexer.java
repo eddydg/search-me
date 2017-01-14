@@ -14,8 +14,9 @@ import java.util.stream.Collectors;
 public class Indexer {
 
     private static String STOP_WORDS_FILE = "assets/stops.en.txt";
+    private static List<String> suffixesToStrip = new ArrayList<>(Arrays.asList("ed", "ing", "ly"));
 
-    public static HashMap<String, Integer> index;
+    public HashMap<String, Integer> index;
 
     public static String fetchBody(URL url) {
         String content = "";
@@ -46,7 +47,7 @@ public class Indexer {
             fis.close();
 
             Set<String> stopWords = new HashSet<>(Arrays.asList(new String(data, "UTF-8").split("\n")));
-            res = res.stream().filter(w -> stopWords.contains(w)).collect(Collectors.toList());
+            res = res.stream().filter(w -> !stopWords.contains(w)).collect(Collectors.toList());
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -54,9 +55,14 @@ public class Indexer {
         return res;
     }
 
-    public String reduce(String input) {
+    public static String reduce(String input) {
+        for (String s: suffixesToStrip) {
+            if (input.endsWith(s)) {
+                return input.substring(0, input.length() - s.length());
+            }
+        }
 
-        return "";
+        return input;
     }
 
 }
