@@ -7,28 +7,38 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
+import java.util.ListIterator;
+import java.util.stream.Stream;
 
 /**
  * Created by MeltedPenguin on 13/01/2017.
  */
 public class Crawler {
 
-    static int MAX_LEVEL = 3;
+    static int MAX_DOCUMENTS = 500;
     static private String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
-    static private List<URL> urls;
+    static private List<URL> urls = new ArrayList<>();
 
-    public static List<URL> crawler(String url) {
-        urls = new ArrayList<>();
-        crawler(url, MAX_LEVEL);
-        return urls;
-    }
+    public static List<URL> crawler(URL url) {
+        ListIterator<URL> iter = new ArrayList<>(Arrays.asList(url)).listIterator();
+        int count = 0;
 
-    private static void crawler(String url, int maxLevel) {
-        if (maxLevel <= 0) return;
+        while(count < MAX_DOCUMENTS && iter.hasNext()){
+            count++;
+            URL currentUrl = iter.next();
 
-        try {
-            Document doc = Jsoup.connect(url).ignoreContentType(true).get();
+            Document doc = null;
+            try {
+                doc = Jsoup.connect(currentUrl.toString()).ignoreContentType(true).get();
+                if (!urls.contains(currentUrl))
+                    urls.add(currentUrl);
+            } catch (IOException e) {
+                Main.logger.error("Jsoup connect error on " + currentUrl.toString());
+                continue;
+            }
+
             doc.select("a").forEach((e) -> {
                 String href = e.attr("href");
                 URL newUrl = null;
@@ -40,26 +50,21 @@ public class Crawler {
                     } catch (MalformedURLException e1) {
                         e1.printStackTrace();
                     }
-                    Main.logger.trace("Absolute link: " + href);
                 }
                 // Relative link
                 else {
                     try {
-                        newUrl = new URL(new URL(url), href);
+                        newUrl = new URL(url, href);
                     } catch (MalformedURLException e1) {
-                        e1.printStackTrace();
+                        Main.logger.warn("MalformedURLException: " + url + href);
                     }
-                    Main.logger.trace("Relative link: " + newUrl);
                 }
+                Main.logger.trace("{}", newUrl);
 
-                if (newUrl != null && !urls.contains(newUrl)) {
-                    urls.add(newUrl);
-                    crawler(newUrl.toString(), maxLevel - 1);
-                }
+                iter.add(newUrl);
             });
-        } catch (Exception e) {
-            Main.logger.error(url);
-            e.printStackTrace();
         }
+
+        return urls;
     }
 }
