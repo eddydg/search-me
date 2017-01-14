@@ -26,7 +26,7 @@ public class Indexer {
 
     public static Index run(Stream<URL> urls) {
         List<Doc> res =  urls
-                .map(Indexer::fetchBody)
+                .map(Indexer::fetchDocument)
                 .map(Indexer::tokenize)
                 .map(Indexer::cleanup)
                 .map(Indexer::reduce)
@@ -35,7 +35,7 @@ public class Indexer {
         return tfidf(res);
     }
 
-    public static String fetchBody(URL url) {
+    public static Doc fetchDocument(URL url) {
         String content = "";
         try {
             Document doc = Jsoup.connect(url.toString()).get();
@@ -45,11 +45,12 @@ public class Indexer {
         } catch (IOException e) {
             Main.logger.warn("HTTP error fetching URL: " + url);
         }
-        return content;
+        return new Doc(url, null, content);
     }
 
-    public static Stream<Token> cleanup(Stream<Token> input) {
-        return input.map(Indexer::cleanup);
+    public static Doc cleanup(Doc doc) {
+        doc.setTokens(doc.getTokens().stream().map(Indexer::cleanup).collect(Collectors.toList()));
+        return doc;
     }
 
     public static Token cleanup(Token token) {
@@ -58,8 +59,8 @@ public class Indexer {
         return token;
     }
 
-    public static Stream<Token> tokenize(String input) {
-        String[] words = input.toLowerCase().split("\\W+");
+    public static Doc tokenize(Doc doc) {
+        String[] words = doc.getContent().toLowerCase().split("\\W+");
 
         File file = new File(STOP_WORDS_FILE);
         FileInputStream fis = null;
@@ -71,20 +72,23 @@ public class Indexer {
 
             Set<String> stopWords = new HashSet<>(Arrays.asList(new String(data, "UTF-8").split("\n")));
 
-            return IntStream.range(0, words.length)
+            List<Token> tokens = IntStream.range(0, words.length)
                     .filter(i -> !stopWords.contains(words[i]))
-                    .mapToObj(i -> new Token(words[i], 0, i));
+                    .mapToObj(i -> new Token(words[i], 0, i))
+                    .collect(Collectors.toList());
+
+            doc.setTokens(tokens);
 
         } catch (IOException e) {
             e.printStackTrace();
         }
 
-        Stream.Builder<Token> b = Stream.builder();
-        return b.build();
+        return doc;
     }
 
-    public static Doc reduce(Stream<Token> input) {
-        return new Doc(input.map(Indexer::reduce).collect(Collectors.toList()));
+    public static Doc reduce(Doc doc) {
+        doc.setTokens(doc.getTokens().stream().map(Indexer::reduce).collect(Collectors.toList()));
+        return doc;
     }
 
     public static Token reduce(Token token) {
