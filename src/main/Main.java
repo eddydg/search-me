@@ -23,7 +23,7 @@ public class Main {
 
         List<URL> urls = null;
         try {
-            urls = Crawler.crawler(new URL("https://en.wikipedia.org/wiki/Lidar"));
+            urls = Crawler.run(new URL("https://en.wikipedia.org/wiki/Lidar"));
             Index index = Indexer.run(urls.stream());
 
             for (Token token: index.getDocs().get(0).getTokens())

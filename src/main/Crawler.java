@@ -18,12 +18,14 @@ import java.util.concurrent.LinkedBlockingDeque;
 class Crawler {
 
     private static final int MAX_DOCUMENTS = 10;
+    private static int POOL_SIZE = 5;
     private static final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
-    static private List<URL> crawledURLs = new ArrayList<>();
 
-    static List<URL> crawler(URL url) {
-        BlockingQueue<URL> urls = new LinkedBlockingDeque<>(Collections.singletonList(url));
+    private static final BlockingQueue<URL> urls = new LinkedBlockingDeque<>();
+    private static final List<URL> crawledURLs = Collections.synchronizedList(new ArrayList<>());
 
+    static List<URL> run(URL url) {
+        urls.add(url);
         while(crawledURLs.size() < MAX_DOCUMENTS && !urls.isEmpty()){
 
             URL currentUrl;
@@ -37,29 +39,13 @@ class Crawler {
             if (crawledURLs.contains(currentUrl))
                 continue;
 
-            try {
-                Connection.Response res = Jsoup.connect(currentUrl.toString()).execute();
-                if (res.contentType().contains("text/html")) {
-                    Document doc = res.parse();
-                    Main.logger.trace("{} ({}/{})", currentUrl, crawledURLs.size() + 1, MAX_DOCUMENTS);
-                    crawledURLs.add(currentUrl);
-
-                    for (Element e: doc.select("a")){
-                        URL newUrl = getProperUrl(url, e);
-                        if (newUrl != null)
-                            urls.add(newUrl);
-                    }
-                }
-            } catch (IOException e) {
-                Main.logger.error("Jsoup connect error on " + currentUrl.toString());
-            }
+            crawl(currentUrl);
         }
 
         return crawledURLs;
     }
 
-    private static URL getProperUrl(URL url, Element e) {
-        String href = e.attr("href");
+    private static URL getProperUrl(URL url, String href) {
         URL newUrl = null;
 
         // Absolute link
@@ -80,5 +66,24 @@ class Crawler {
         }
 
         return newUrl;
+    }
+
+    static void crawl(URL url) {
+        try {
+            Connection.Response res = Jsoup.connect(url.toString()).execute();
+            if (res.contentType().contains("text/html")) {
+                Document doc = res.parse();
+                Main.logger.trace("{} ({}/{})", url, crawledURLs.size() + 1, MAX_DOCUMENTS);
+                crawledURLs.add(url);
+
+                for (Element e: doc.select("a")){
+                    URL newUrl = getProperUrl(url, e.attr("href"));
+                    if (newUrl != null)
+                        urls.add(newUrl);
+                }
+            }
+        } catch (IOException e) {
+            Main.logger.error("Jsoup connect error on " + url.toString());
+        }
     }
 }
