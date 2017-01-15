@@ -9,6 +9,8 @@ import org.jsoup.nodes.Document;
 
 import java.io.*;
 import java.net.URL;
+import java.nio.charset.Charset;
+import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -65,19 +67,18 @@ public class Indexer {
         String[] words = doc.getContent().toLowerCase().split("\\W+");
 
         File file = new File(STOP_WORDS_FILE);
-        FileInputStream fis = null;
         try {
-            fis = new FileInputStream(file);
-            byte[] data = new byte[(int) file.length()];
-            fis.read(data);
-            fis.close();
+            List<String> stopWords = Files.readAllLines(file.toPath(), Charset.defaultCharset());
 
-            Set<String> stopWords = new HashSet<>(Arrays.asList(new String(data, "UTF-8").split("\n")));
+            long count = 0;
+            List<Token> tokens = new ArrayList<>();
 
-            List<Token> tokens = IntStream.range(0, words.length)
-                    .filter(i -> !stopWords.contains(words[i]))
-                    .mapToObj(i -> new Token(words[i], 0, i))
-                    .collect(Collectors.toList());
+            for (String word: words) {
+                if (!stopWords.contains(word)) {
+                    tokens.add(new Token(word, 0, count));
+                    count++;
+                }
+            }
 
             doc.setTokens(tokens);
 
@@ -138,12 +139,10 @@ public class Indexer {
             doc.getTokens().parallelStream()
                     .filter(token -> !frequencies.containsKey(token.getValue()))
                     .forEach(token -> {
-                        double tf = getTermFrequency(token, doc);
-                        double idf = getInverseTermFrequency(token, docs);
-                        double f = tf * idf;
-                        frequencies.put(token.getValue(), f);
+                        double tfidf = getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
+                        frequencies.put(token.getValue(), tfidf);
 
-                        token.setFrequence(f);
+                        token.setFrequence(tfidf);
                     });
             doc.setFrequencies(frequencies);
         });
