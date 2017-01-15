@@ -1,5 +1,6 @@
 package main;
 
+import main.Models.Doc;
 import main.Models.Index;
 import main.Models.Token;
 import org.apache.logging.log4j.Logger;
@@ -16,13 +17,15 @@ public class Main {
     public static final Logger logger = LogManager.getLogger(Main.class);
 
     public static void main(String[] args) {
+        long startTime = System.currentTimeMillis();
         logger.trace("Start app");
+
 
         List<URL> urls = null;
         try {
             urls = Crawler.crawler(new URL("https://en.wikipedia.org/wiki/Lidar"));
             Index index = Indexer.run(urls.stream());
-            System.out.println(index.getDocs().size());
+
             for (Token token: index.getDocs().get(0).getTokens())
                 System.out.println(token.getPosition() + ": " + token.getValue() + "(" + token.getFrequence() + ")");
 
@@ -30,6 +33,8 @@ public class Main {
             e.printStackTrace();
         }
 
-        logger.trace("End app");
+        long endTime = System.currentTimeMillis();
+        logger.trace("End app ({}ms)", (endTime - startTime));
     }
+
 }

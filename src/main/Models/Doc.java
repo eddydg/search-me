@@ -2,6 +2,7 @@ package main.Models;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 
 /**
@@ -12,15 +13,18 @@ public class Doc {
     URL url;
     List<Token> tokens;
     String content;
+    HashMap<String, Double> frequencies;
 
     public Doc() {
-        tokens = new ArrayList<>();
+        this.tokens = new ArrayList<>();
+        this.frequencies = new HashMap<>();
     }
 
-    public Doc(URL url, List<Token> tokens, String content) {
+    public Doc(URL url, List<Token> tokens, String content, HashMap frequencies) {
         this.url = url;
         this.tokens = tokens;
         this.content = content;
+        this.frequencies = frequencies;
     }
 
     public List<Token> getTokens() {
@@ -32,7 +36,7 @@ public class Doc {
     }
 
     public boolean containsWord(String word) {
-        return tokens.stream().anyMatch(token -> token.getValue().equals(word));
+        return tokens.stream().anyMatch(token -> token.getValue().equalsIgnoreCase(word));
     }
 
     public URL getUrl() {
@@ -49,5 +53,13 @@ public class Doc {
 
     public void setContent(String content) {
         this.content = content;
+    }
+
+    public HashMap<String, Double> getFrequencies() {
+        return frequencies;
+    }
+
+    public void setFrequencies(HashMap<String, Double> frequencies) {
+        this.frequencies = frequencies;
     }
 }
