@@ -23,13 +23,16 @@ public class Main {
 
         List<URL> urls = null;
         try {
-            urls = Crawler.run(new URL("https://en.wikipedia.org/wiki/Lidar"));
-            Index index = Indexer.run(urls.stream());
+            Crawler crawler = new Crawler(new URL("https://en.wikipedia.org/wiki/Lidar"));
+            Thread t = new Thread(crawler);
+            t.start();
+            t.join();
+            Index index = Indexer.run(crawler.getCrawledURLs().stream());
 
             for (Token token: index.getDocs().get(0).getTokens())
                 System.out.println(token.getPosition() + ": " + token.getValue() + "(" + token.getFrequence() + ")");
 
-        } catch (MalformedURLException e) {
+        } catch (MalformedURLException | InterruptedException e) {
             e.printStackTrace();
         }
 
