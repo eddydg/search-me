@@ -8,29 +8,25 @@ import org.jsoup.nodes.Element;
 import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.ListIterator;
+import java.util.*;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.LinkedBlockingDeque;
-import java.util.stream.Stream;
 
 /**
  * Created by MeltedPenguin on 13/01/2017.
  */
-public class Crawler {
+class Crawler {
 
-    static int MAX_DOCUMENTS = 10;
-    static private String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
+    private static final int MAX_DOCUMENTS = 10;
+    private static final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
     static private List<URL> crawledURLs = new ArrayList<>();
 
-    public static List<URL> crawler(URL url) {
-        BlockingQueue<URL> urls = new LinkedBlockingDeque<>(Arrays.asList(url));
+    static List<URL> crawler(URL url) {
+        BlockingQueue<URL> urls = new LinkedBlockingDeque<>(Collections.singletonList(url));
 
         while(crawledURLs.size() < MAX_DOCUMENTS && !urls.isEmpty()){
 
-            URL currentUrl = null;
+            URL currentUrl;
             try {
                 currentUrl = urls.take();
             } catch (InterruptedException e) {

@@ -7,9 +7,9 @@ public class Token {
 
     private String value;
     private double frequence;
-    private int position;
+    private long position;
 
-    public Token(String value, long frequence, int position) {
+    public Token(String value, long frequence, long position) {
         this.value = value;
         this.frequence = frequence;
         this.position = position;
@@ -23,11 +23,11 @@ public class Token {
         this.value = value;
     }
 
-    public int getPosition() {
+    public long getPosition() {
         return position;
     }
 
-    public void setPosition(int position) {
+    public void setPosition(long position) {
         this.position = position;
     }
 
