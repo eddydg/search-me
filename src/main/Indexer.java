@@ -47,7 +47,7 @@ public class Indexer {
         } catch (IOException e) {
             Main.logger.warn("HTTP error fetching URL: " + url);
         }
-        return new Doc(url, null, content);
+        return new Doc(url, null, content, null);
     }
 
     public static Doc cleanup(Doc doc) {
@@ -105,37 +105,48 @@ public class Indexer {
         return token;
     }
 
-    public static long getWordFrequency(Token token, Doc input) {
-        return input.getTokens().stream().filter(t -> t.getValue().equals(token.getValue())).count();
+    public static double getTermFrequency(Token token, Doc doc) {
+        double result = doc.getTokens().stream().filter(t -> t.getValue().equalsIgnoreCase(token.getValue())).count();
+        double size = doc.getTokens().size();
+        return result / size;
     }
 
-    public static double getInverseWordsFrequencies(Token token, List<Doc> input) {
-        long d = input.stream().map(doc -> doc.getTokens().size()).count();
-        if (d == 0) return 0;
-        long count = input.parallelStream().filter(doc -> doc.containsWord(token.getValue())).count();
+    public static double getInverseTermFrequency(Token token, List<Doc> docs) {
+        //double d = docs.size();
+        //double count = docs.parallelStream().filter(doc -> doc.containsWord(token.getValue())).count();
 
-        return 1 + Math.log(d / count);
+        double n = 0;
+        for (Doc doc : docs) {
+            for (Token word : doc.getTokens()) {
+                if (word.getValue().equalsIgnoreCase(token.getValue())) {
+                    n++;
+                    break;
+                }
+            }
+        }
+
+        //return Math.log(d / count);
+        return Math.log(docs.size() / n);
     }
 
     public static Index tfidf(List<Doc> docs) {
-        HashMap<String, Double> frequencies = new HashMap<>();
-        Index index = new Index(docs, frequencies);
+        Index index = new Index(docs);
 
-        docs.forEach(doc ->
+        docs.forEach(doc -> {
+            HashMap<String, Double> frequencies = new HashMap<>();
+
             doc.getTokens().parallelStream()
                     .filter(token -> !frequencies.containsKey(token.getValue()))
                     .forEach(token -> {
-                        double f;
-                        if (frequencies.containsKey(token.getValue()))
-                            f = frequencies.get(token.getValue());
-                        else {
-                            f = Math.log(getWordFrequency(token, doc) * getInverseWordsFrequencies(token, docs));
-                            frequencies.put(token.getValue(), f);
-                        }
+                        double tf = getTermFrequency(token, doc);
+                        double idf = getInverseTermFrequency(token, docs);
+                        double f = tf * idf;
+                        frequencies.put(token.getValue(), f);
+
                         token.setFrequence(f);
-                    })
-        );
-        index.setFrequencies(frequencies);
+                    });
+            doc.setFrequencies(frequencies);
+        });
 
         return index;
     }
