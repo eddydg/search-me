@@ -49,7 +49,6 @@ class Crawler {
 
         for (int i = 0; i < poolSize; i++) {
             CrawlTask ct = new CrawlTask(urls, crawledURLs, i + 1);
-            Main.logger.info("Starting CrawlTask n°{}", (i + 1));
             es.execute(ct);
         }
 
@@ -128,10 +127,10 @@ class Crawler {
                 Connection.Response res = Jsoup.connect(url.toString()).execute();
                 if (res.contentType().contains("text/html")) {
                     Document doc = res.parse();
-                    Main.logger.trace("Thread n°{} - {} ({}/{})", threadNumber, url, crawledURLs.size() + 1, MAX_DOCUMENTS);
 
                     if (crawledURLs.size() >= MAX_DOCUMENTS) return;
 
+                    Main.logger.trace("Crawled {} ({}/{})", url, crawledURLs.size() + 1, MAX_DOCUMENTS);
                     crawledURLs.add(url);
 
                     for (Element e: doc.select("a")){

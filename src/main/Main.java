@@ -19,7 +19,8 @@ public class Main {
         long startTime = System.currentTimeMillis();
         logger.trace("Start app");
 
-        /*
+        Indexer indexer = new Indexer();
+
         String url = "https://en.wikipedia.org/wiki/Lidar";
         List<URL> crawledUrls;
         try {
@@ -30,20 +31,18 @@ public class Main {
             e.printStackTrace();
             return;
         }
-        Index index = Indexer.run(crawledUrls.stream());
-        */
+        Index index = indexer.run(crawledUrls.stream());
 
-        List<String> contents = new ArrayList<>(Arrays.asList(
+        /*List<String> contents = new ArrayList<>(Arrays.asList(
                 "Lorem ipsum dolor ipsum sit ipsum",
                 "Vituperata incorrupte at ipsum pro quo",
                 "Has persius disputationi id simul"
         ));
-        Indexer indexer = new Indexer();
-        Index index = indexer.run(contents);
+        Index index = indexer.run(contents);*/
 
         if (index != null) {
             Requester requester = new Requester(index);
-            List<Result> results = requester.search("simul");
+            List<Result> results = requester.search("lidar");
 
             results.forEach(System.out::println);
         }

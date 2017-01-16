@@ -156,7 +156,6 @@ public class Indexer {
 
         for (int i = 0; i < docs.size(); i++) {
             TfidfTask t = new TfidfTask(docs.get(i), docs, i + 1);
-            Main.logger.info("Starting TfidfTask n°{}", (i + 1));
             es.execute(t);
         }
 
