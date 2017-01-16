@@ -29,6 +29,8 @@ public class Indexer {
     public HashMap<String, Integer> index;
 
     public static Index run(Stream<URL> urls) {
+        double startTime = System.currentTimeMillis();
+
         List<Doc> res =  urls
                 .map(Indexer::fetchDocument)
                 .map(Indexer::tokenize)
@@ -36,6 +38,22 @@ public class Indexer {
                 .map(Indexer::reduce)
                 .collect(Collectors.toList());
 
+        double endTime = System.currentTimeMillis();
+        Main.logger.trace("Index preparation ({}ms)", (endTime - startTime));
+        return getIndex(res);
+    }
+
+    public static Index run(List<String> input) {
+        double startTime = System.currentTimeMillis();
+
+        List<Doc> res = input.stream().map(c -> new Doc(null, null, c, null))
+                .map(Indexer::tokenize)
+                .map(Indexer::cleanup)
+                .map(Indexer::reduce)
+                .collect(Collectors.toList());
+
+        double endTime = System.currentTimeMillis();
+        Main.logger.trace("Index preparation ({}ms)", (endTime - startTime));
         return getIndex(res);
     }
 
@@ -139,8 +157,7 @@ public class Indexer {
 
             HashMap<String, Double> frequencies = new HashMap<>();
 
-            doc.getTokens().stream()
-                    .filter(token -> !frequencies.containsKey(token.getValue()))
+            doc.getTokens().parallelStream()
                     .forEach(token -> {
                         double tfidf = getTfidf(token, doc, docs);
                         frequencies.put(token.getValue(), tfidf);
