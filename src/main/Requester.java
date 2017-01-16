@@ -29,13 +29,19 @@ public class Requester {
     }
 
     public List<Result> search(String keywords) {
+        long startTime = System.currentTimeMillis();
         Doc searchDoc = new Doc();
         searchDoc.setContent(keywords);
         Indexer indexer = new Indexer();
         searchDoc = indexer.tokenize(searchDoc);
         searchDoc = indexer.reduce(searchDoc);
 
-        return find(searchDoc);
+        List<Result> results = find(searchDoc);
+
+        long endTime = System.currentTimeMillis();
+        Main.logger.debug("End of searching for {} ({}ms)", searchDoc.getTokens(), (endTime - startTime));
+
+        return results;
     }
 
     private List<Result> find(Doc searchDoc) {

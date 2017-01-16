@@ -167,7 +167,7 @@ public class Indexer {
         }
 
         double endTime = System.currentTimeMillis();
-        Main.logger.trace("Calculated Index for ({}ms)", (endTime - startTime));
+        Main.logger.trace("Calculated Index ({}ms)", (endTime - startTime));
         return index;
     }
 
