@@ -10,8 +10,6 @@ import org.apache.logging.log4j.LogManager;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 public class Main {
 
@@ -22,15 +20,13 @@ public class Main {
         logger.trace("Start app");
 
 
-        List<URL> urls = null;
+        String url = "https://en.wikipedia.org/wiki/Lidar";
         Index index = null;
         try {
-            Crawler crawler = new Crawler(new URL("https://en.wikipedia.org/wiki/Lidar"));
-            Thread t = new Thread(crawler);
-            t.start();
-            t.join();
-            index = Indexer.run(crawler.getCrawledURLs().stream());
-
+            Crawler crawler = new Crawler(new URL(url));
+            crawler.run();
+            List<URL> crawledUrls = crawler.getCrawledURLs();
+            index = Indexer.run(crawledUrls.stream());
         } catch (MalformedURLException | InterruptedException e) {
             e.printStackTrace();
         }

@@ -9,15 +9,14 @@ import java.io.IOException;
 import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.*;
 
 /**
  * Created by MeltedPenguin on 13/01/2017.
  */
-class Crawler implements Runnable {
+class Crawler {
 
-    private final int MAX_DOCUMENTS = 20;
+    private final int MAX_DOCUMENTS = 500;
     private int poolSize = 5;
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
@@ -34,24 +33,30 @@ class Crawler implements Runnable {
         this.poolSize = poolSize;
     }
 
-    @Override
-    public void run() {
-        CrawlTask t[] = new CrawlTask[poolSize];
+    void run() {
+        ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
         for (int i = 0; i < poolSize; i++) {
-            t[i] = new CrawlTask(urls, crawledURLs);
+            CrawlTask ct = new CrawlTask(urls, crawledURLs, i + 1);
             Main.logger.info("Starting CrawlTask n°{}", (i + 1));
-            t[i].start();
-        }
+            es.execute(ct);
 
-        for (int i = 0; i < poolSize; i++) {
-            try {
-                t[i].join();
-            } catch (InterruptedException e) {
-                e.printStackTrace();
+            // FIXME: waits for first Task to fill `urls` otherwise next Task won't wait on empty list
+            if (i == 0) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
 
+        es.shutdown();
+        try {
+            es.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     private URL getProperUrl(URL url, String href) {
@@ -80,10 +85,12 @@ class Crawler implements Runnable {
     class CrawlTask extends Thread {
         BlockingQueue<URL> urls;
         List<URL> crawledURLs;
+        int threadNumber;
 
-        public CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs) {
+        CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs, int threadNumber) {
             this.urls = urls;
             this.crawledURLs = crawledURLs;
+            this.threadNumber = threadNumber;
         }
 
         @Override
@@ -106,12 +113,12 @@ class Crawler implements Runnable {
                 Connection.Response res = Jsoup.connect(url.toString()).execute();
                 if (res.contentType().contains("text/html")) {
                     Document doc = res.parse();
-                    Main.logger.trace("{} ({}/{})", url, crawledURLs.size() + 1, MAX_DOCUMENTS);
+                    Main.logger.trace("Thread n°{} - {} ({}/{})", threadNumber, url, crawledURLs.size() + 1, MAX_DOCUMENTS);
                     crawledURLs.add(url);
 
                     for (Element e: doc.select("a")){
                         URL newUrl = getProperUrl(url, e.attr("href"));
-                        if (newUrl != null && !crawledURLs.contains(newUrl))
+                        if (newUrl != null && !crawledURLs.contains(newUrl)) // !urls.contains(newUrl)
                             urls.add(newUrl);
                     }
                 }
@@ -121,7 +128,7 @@ class Crawler implements Runnable {
         }
     }
 
-    public List<URL> getCrawledURLs() {
+    List<URL> getCrawledURLs() {
         return crawledURLs;
     }
 }
