@@ -134,9 +134,10 @@ public class Indexer {
         Index index = new Index(docs);
 
         docs.forEach(doc -> {
+            double startTime = System.currentTimeMillis();
             HashMap<String, Double> frequencies = new HashMap<>();
 
-            doc.getTokens().parallelStream()
+            doc.getTokens().stream()
                     .filter(token -> !frequencies.containsKey(token.getValue()))
                     .forEach(token -> {
                         double tfidf = getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
@@ -145,6 +146,8 @@ public class Indexer {
                         token.setFrequence(tfidf);
                     });
             doc.setFrequencies(frequencies);
+            double endTime = System.currentTimeMillis();
+            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTime - startTime));
         });
 
         return index;

@@ -17,7 +17,7 @@ import java.util.concurrent.LinkedBlockingDeque;
  */
 class Crawler implements Runnable {
 
-    private final int MAX_DOCUMENTS = 50;
+    private final int MAX_DOCUMENTS = 20;
     private int poolSize = 5;
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
