@@ -46,7 +46,7 @@ public class Doc {
     }
 
     public boolean containsWord(String word) {
-        return tokens.stream().anyMatch(token -> token.getValue().equalsIgnoreCase(word));
+        return tokens.parallelStream().anyMatch(token -> token.getValue().equalsIgnoreCase(word));
     }
 
     public URL getUrl() {

@@ -16,7 +16,7 @@ import java.util.concurrent.*;
  */
 class Crawler {
 
-    private final int MAX_DOCUMENTS = 500;
+    private final int MAX_DOCUMENTS = 20;
     private int poolSize = 5;
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
@@ -34,21 +34,23 @@ class Crawler {
     }
 
     void run() {
+        double startTime = System.currentTimeMillis();
+
+        // FIXME: let first Task fill `urls` otherwise next Tasks won't wait on empty list
+        Thread initThread = new Thread(new CrawlTask(urls, crawledURLs, 0, true));
+        initThread.run();
+        try {
+            initThread.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
         ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
         for (int i = 0; i < poolSize; i++) {
             CrawlTask ct = new CrawlTask(urls, crawledURLs, i + 1);
             Main.logger.info("Starting CrawlTask n°{}", (i + 1));
             es.execute(ct);
-
-            // FIXME: waits for first Task to fill `urls` otherwise next Task won't wait on empty list
-            if (i == 0) {
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-            }
         }
 
         es.shutdown();
@@ -57,6 +59,8 @@ class Crawler {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        double endTime = System.currentTimeMillis();
+        Main.logger.trace("End Crawler ({}ms)", (endTime - startTime));
     }
 
     private URL getProperUrl(URL url, String href) {
@@ -84,13 +88,22 @@ class Crawler {
 
     class CrawlTask extends Thread {
         BlockingQueue<URL> urls;
-        List<URL> crawledURLs;
+        final List<URL> crawledURLs;
         int threadNumber;
+        boolean isFirst;
 
         CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs, int threadNumber) {
             this.urls = urls;
             this.crawledURLs = crawledURLs;
             this.threadNumber = threadNumber;
+            this.isFirst = false;
+        }
+
+        CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs, int threadNumber, boolean isFirst) {
+            this.urls = urls;
+            this.crawledURLs = crawledURLs;
+            this.threadNumber = threadNumber;
+            this.isFirst = isFirst;
         }
 
         @Override
@@ -105,6 +118,8 @@ class Crawler {
                 }
 
                 crawl(currentUrl);
+
+                if (isFirst) break;
             }
         }
 
@@ -114,6 +129,9 @@ class Crawler {
                 if (res.contentType().contains("text/html")) {
                     Document doc = res.parse();
                     Main.logger.trace("Thread n°{} - {} ({}/{})", threadNumber, url, crawledURLs.size() + 1, MAX_DOCUMENTS);
+
+                    if (crawledURLs.size() >= MAX_DOCUMENTS) return;
+
                     crawledURLs.add(url);
 
                     for (Element e: doc.select("a")){

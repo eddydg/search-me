@@ -36,7 +36,7 @@ public class Indexer {
                 .map(Indexer::reduce)
                 .collect(Collectors.toList());
 
-        return tfidf(res);
+        return getIndex(res);
     }
 
     public static Doc fetchDocument(URL url) {
@@ -90,7 +90,9 @@ public class Indexer {
     }
 
     public static Doc reduce(Doc doc) {
-        doc.setTokens(doc.getTokens().stream().map(Indexer::reduce).collect(Collectors.toList()));
+        doc.setTokens(doc.getTokens().parallelStream()
+                .map(Indexer::reduce)
+                .collect(Collectors.toList()));
         return doc;
     }
 
@@ -107,49 +109,51 @@ public class Indexer {
     }
 
     public static double getTermFrequency(Token token, Doc doc) {
-        double result = doc.getTokens().stream().filter(t -> t.getValue().equalsIgnoreCase(token.getValue())).count();
-        double size = doc.getTokens().size();
-        return result / size;
+        double tokenCount = doc.getTokens().size();
+        double result = doc.getTokens().parallelStream()
+                .filter(t -> t.getValue().equalsIgnoreCase(token.getValue()))
+                .count();
+
+        return result / tokenCount;
     }
 
     public static double getInverseTermFrequency(Token token, List<Doc> docs) {
-        //double d = docs.size();
-        //double count = docs.parallelStream().filter(doc -> doc.containsWord(token.getValue())).count();
+        double docCount = docs.size();
+        double docWithTermCount = docs.parallelStream()
+                .filter(doc -> doc.containsWord(token.getValue()))
+                .count();
 
-        double n = 0;
-        for (Doc doc : docs) {
-            for (Token word : doc.getTokens()) {
-                if (word.getValue().equalsIgnoreCase(token.getValue())) {
-                    n++;
-                    break;
-                }
-            }
-        }
-
-        //return Math.log(d / count);
-        return Math.log(docs.size() / n);
+        return Math.log(docCount / docWithTermCount);
     }
 
-    public static Index tfidf(List<Doc> docs) {
+    public static double getTfidf(Token token, Doc doc, List<Doc> docs) {
+        return getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
+    }
+
+    public static Index getIndex(List<Doc> docs) {
+        double startTime = System.currentTimeMillis();
         Index index = new Index(docs);
 
         docs.forEach(doc -> {
-            double startTime = System.currentTimeMillis();
+            double startTimeDoc = System.currentTimeMillis();
+
             HashMap<String, Double> frequencies = new HashMap<>();
 
             doc.getTokens().stream()
                     .filter(token -> !frequencies.containsKey(token.getValue()))
                     .forEach(token -> {
-                        double tfidf = getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
+                        double tfidf = getTfidf(token, doc, docs);
                         frequencies.put(token.getValue(), tfidf);
-
                         token.setFrequence(tfidf);
                     });
             doc.setFrequencies(frequencies);
-            double endTime = System.currentTimeMillis();
-            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTime - startTime));
+
+            double endTimeDoc = System.currentTimeMillis();
+            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTimeDoc - startTimeDoc));
         });
 
+        double endTime = System.currentTimeMillis();
+        Main.logger.trace("Calculated Index for ({}ms)", (endTime - startTime));
         return index;
     }
 
