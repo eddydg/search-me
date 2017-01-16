@@ -12,8 +12,7 @@ import java.net.URL;
 import java.nio.charset.Charset;
 import java.nio.file.Files;
 import java.util.*;
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import java.util.stream.Stream;
@@ -23,19 +22,20 @@ import java.util.stream.Stream;
  */
 public class Indexer {
 
-    private static String STOP_WORDS_FILE = "assets/stops.en.txt";
-    private static List<String> suffixesToStrip = new ArrayList<>(Arrays.asList("ed", "ing", "ly"));
+    private final String STOP_WORDS_FILE = "assets/stops.en.txt";
+    private final List<String> suffixesToStrip = new ArrayList<>(Arrays.asList("ed", "ing", "ly"));
+    private final int poolSize = 5;
 
     public HashMap<String, Integer> index;
 
-    public static Index run(Stream<URL> urls) {
+    public Index run(Stream<URL> urls) {
         double startTime = System.currentTimeMillis();
 
         List<Doc> res =  urls
-                .map(Indexer::fetchDocument)
-                .map(Indexer::tokenize)
-                .map(Indexer::cleanup)
-                .map(Indexer::reduce)
+                .map(this::fetchDocument)
+                .map(this::tokenize)
+                .map(this::cleanup)
+                .map(this::reduce)
                 .collect(Collectors.toList());
 
         double endTime = System.currentTimeMillis();
@@ -43,13 +43,13 @@ public class Indexer {
         return getIndex(res);
     }
 
-    public static Index run(List<String> input) {
+    public Index run(List<String> input) {
         double startTime = System.currentTimeMillis();
 
         List<Doc> res = input.stream().map(c -> new Doc(null, null, c, null))
-                .map(Indexer::tokenize)
-                .map(Indexer::cleanup)
-                .map(Indexer::reduce)
+                .map(this::tokenize)
+                .map(this::cleanup)
+                .map(this::reduce)
                 .collect(Collectors.toList());
 
         double endTime = System.currentTimeMillis();
@@ -57,7 +57,7 @@ public class Indexer {
         return getIndex(res);
     }
 
-    public static Doc fetchDocument(URL url) {
+    public Doc fetchDocument(URL url) {
         String content = "";
         try {
             Document doc = Jsoup.connect(url.toString()).get();
@@ -70,18 +70,18 @@ public class Indexer {
         return new Doc(url, null, content, null);
     }
 
-    public static Doc cleanup(Doc doc) {
-        doc.setTokens(doc.getTokens().stream().map(Indexer::cleanup).collect(Collectors.toList()));
+    public Doc cleanup(Doc doc) {
+        doc.setTokens(doc.getTokens().stream().map(this::cleanup).collect(Collectors.toList()));
         return doc;
     }
 
-    public static Token cleanup(Token token) {
+    public Token cleanup(Token token) {
         Document doc = Jsoup.parse(token.getValue());
         token.setValue(doc.text());
         return token;
     }
 
-    public static Doc tokenize(Doc doc) {
+    public Doc tokenize(Doc doc) {
         String[] words = doc.getContent().toLowerCase().split("\\W+");
 
         File file = new File(STOP_WORDS_FILE);
@@ -107,14 +107,14 @@ public class Indexer {
         return doc;
     }
 
-    public static Doc reduce(Doc doc) {
+    public Doc reduce(Doc doc) {
         doc.setTokens(doc.getTokens().parallelStream()
-                .map(Indexer::reduce)
+                .map(this::reduce)
                 .collect(Collectors.toList()));
         return doc;
     }
 
-    public static Token reduce(Token token) {
+    public Token reduce(Token token) {
         for (String s: suffixesToStrip) {
             String w = token.getValue();
             if (w.endsWith(s)) {
@@ -126,7 +126,7 @@ public class Indexer {
         return token;
     }
 
-    public static double getTermFrequency(Token token, Doc doc) {
+    public double getTermFrequency(Token token, Doc doc) {
         double tokenCount = doc.getTokens().size();
         double result = doc.getTokens().parallelStream()
                 .filter(t -> t.getValue().equalsIgnoreCase(token.getValue()))
@@ -135,7 +135,7 @@ public class Indexer {
         return result / tokenCount;
     }
 
-    public static double getInverseTermFrequency(Token token, List<Doc> docs) {
+    public double getInverseTermFrequency(Token token, List<Doc> docs) {
         double docCount = docs.size();
         double docWithTermCount = docs.parallelStream()
                 .filter(doc -> doc.containsWord(token.getValue()))
@@ -144,34 +144,67 @@ public class Indexer {
         return Math.log(docCount / docWithTermCount);
     }
 
-    public static double getTfidf(Token token, Doc doc, List<Doc> docs) {
+    public double getTfidf(Token token, Doc doc, List<Doc> docs) {
         return getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
     }
 
-    public static Index getIndex(List<Doc> docs) {
+    public Index getIndex(List<Doc> docs) {
         double startTime = System.currentTimeMillis();
         Index index = new Index(docs);
 
-        docs.forEach(doc -> {
-            double startTimeDoc = System.currentTimeMillis();
+        ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
-            HashMap<String, Double> frequencies = new HashMap<>();
+        for (int i = 0; i < docs.size(); i++) {
+            TfidfTask t = new TfidfTask(docs.get(i), docs, i + 1);
+            Main.logger.info("Starting TfidfTask n°{}", (i + 1));
+            es.execute(t);
+        }
 
-            doc.getTokens().parallelStream()
-                    .forEach(token -> {
-                        double tfidf = getTfidf(token, doc, docs);
-                        frequencies.put(token.getValue(), tfidf);
-                        token.setFrequence(tfidf);
-                    });
-            doc.setFrequencies(frequencies);
-
-            double endTimeDoc = System.currentTimeMillis();
-            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTimeDoc - startTimeDoc));
-        });
+        es.shutdown();
+        try {
+            es.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
 
         double endTime = System.currentTimeMillis();
         Main.logger.trace("Calculated Index for ({}ms)", (endTime - startTime));
         return index;
+    }
+
+    private void calculateTfidf(Doc doc, List<Doc> docs) {
+        HashMap<String, Double> frequencies = new HashMap<>();
+
+        doc.getTokens().parallelStream()
+                .forEach(token -> {
+                    double tfidf = getTfidf(token, doc, docs);
+                    frequencies.put(token.getValue(), tfidf);
+                    token.setFrequence(tfidf);
+                });
+
+        doc.setFrequencies(frequencies);
+    }
+
+    class TfidfTask extends Thread {
+        private final Doc doc;
+        private final List<Doc> docs;
+        private final int threadNumber;
+
+        public TfidfTask(Doc doc, List<Doc> docs, int threadNumber) {
+            this.doc = doc;
+            this.docs = docs;
+            this.threadNumber = threadNumber;
+        }
+
+        @Override
+        public void run() {
+            double startTimeDoc = System.currentTimeMillis();
+
+            calculateTfidf(doc, docs);
+
+            double endTimeDoc = System.currentTimeMillis();
+            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTimeDoc - startTimeDoc));
+        }
     }
 
 }

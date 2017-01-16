@@ -19,21 +19,31 @@ public class Main {
         long startTime = System.currentTimeMillis();
         logger.trace("Start app");
 
-
+        /*
         String url = "https://en.wikipedia.org/wiki/Lidar";
-        Index index = null;
+        List<URL> crawledUrls;
         try {
             Crawler crawler = new Crawler(new URL(url));
             crawler.run();
-            List<URL> crawledUrls = crawler.getCrawledURLs();
-            index = Indexer.run(crawledUrls.stream());
+            crawledUrls = crawler.getCrawledURLs();
         } catch (MalformedURLException | InterruptedException e) {
             e.printStackTrace();
+            return;
         }
+        Index index = Indexer.run(crawledUrls.stream());
+        */
+
+        List<String> contents = new ArrayList<>(Arrays.asList(
+                "Lorem ipsum dolor ipsum sit ipsum",
+                "Vituperata incorrupte at ipsum pro quo",
+                "Has persius disputationi id simul"
+        ));
+        Indexer indexer = new Indexer();
+        Index index = indexer.run(contents);
 
         if (index != null) {
             Requester requester = new Requester(index);
-            List<Result> results = requester.search("lidar");
+            List<Result> results = requester.search("simul");
 
             results.forEach(System.out::println);
         }

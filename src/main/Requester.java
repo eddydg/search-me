@@ -31,8 +31,9 @@ public class Requester {
     public List<Result> search(String keywords) {
         Doc searchDoc = new Doc();
         searchDoc.setContent(keywords);
-        searchDoc = Indexer.tokenize(searchDoc);
-        searchDoc = Indexer.reduce(searchDoc);
+        Indexer indexer = new Indexer();
+        searchDoc = indexer.tokenize(searchDoc);
+        searchDoc = indexer.reduce(searchDoc);
 
         return find(searchDoc);
     }
