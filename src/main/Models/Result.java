@@ -19,10 +19,7 @@ public class Result {
 
     @Override
     public String toString() {
-        return "Result{" +
-                "url=" + doc.getUrl() +
-                ", score=" + score +
-                '}';
+        return doc.getUrl() + " (scored " + score + ')';
     }
 
     public Doc getDoc() {
