@@ -5,10 +5,8 @@ import main.Models.Index;
 import main.Models.Result;
 import main.Models.Token;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * Created by MeltedPenguin on 16/01/2017.
@@ -28,6 +26,18 @@ public class Requester {
         this.maxResult = maxResult;
     }
 
+    public void prompt() {
+        Scanner in = new Scanner(System.in);
+        String query;
+
+        System.out.print("Search for ('\\q' to quit): ");
+        while (!(query = in.nextLine()).equals("\\q")) {
+            List<Result> results = search(query);
+            results.forEach(System.out::println);
+            System.out.print("Search for ('\\q' to quit): ");
+        }
+    }
+
     public List<Result> search(String keywords) {
         long startTime = System.currentTimeMillis();
         Doc searchDoc = new Doc();
@@ -39,7 +49,7 @@ public class Requester {
         List<Result> results = find(searchDoc);
 
         long endTime = System.currentTimeMillis();
-        Main.logger.debug("End of searching for {} ({}ms)", searchDoc.getTokens(), (endTime - startTime));
+        Main.logger.trace("End of searching for {} ({}ms)", searchDoc.getTokens(), (endTime - startTime));
 
         return results;
     }
@@ -62,6 +72,9 @@ public class Requester {
 
         results.sort(Comparator.comparingDouble(Result::getScore).reversed());
 
-        return results.subList(0, Math.min(results.size(), maxResult));
+        return results
+                .subList(0, Math.min(results.size(), maxResult)).stream()
+                .filter(r -> r.getScore() > 0)
+                .collect(Collectors.toList());
     }
 }
