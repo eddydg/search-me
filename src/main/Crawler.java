@@ -1,5 +1,6 @@
 package main;
 
+import main.Models.Doc;
 import org.jsoup.Connection;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
@@ -21,7 +22,7 @@ class Crawler {
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
     private final BlockingQueue<URL> urls = new LinkedBlockingDeque<>();
-    private final List<URL> crawledURLs = Collections.synchronizedList(new ArrayList<>());
+    private final List<Doc> crawledDocs = Collections.synchronizedList(new ArrayList<>());
 
     public Crawler(URL url) throws InterruptedException {
         urls.put(url);
@@ -36,8 +37,8 @@ class Crawler {
     void run() {
         double startTime = System.currentTimeMillis();
 
-        // FIXME: let first Task fill `urls` otherwise next Tasks won't wait on empty list
-        Thread initThread = new Thread(new CrawlTask(urls, crawledURLs, 0, true));
+        // Let first Task fill `urls` otherwise next Tasks won't wait on empty list
+        Thread initThread = new Thread(new CrawlTask(urls, crawledDocs, 0, true));
         initThread.run();
         try {
             initThread.join();
@@ -48,7 +49,7 @@ class Crawler {
         ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
         for (int i = 0; i < poolSize; i++) {
-            CrawlTask ct = new CrawlTask(urls, crawledURLs, i + 1);
+            CrawlTask ct = new CrawlTask(urls, crawledDocs, i + 1);
             es.execute(ct);
         }
 
@@ -87,27 +88,27 @@ class Crawler {
 
     class CrawlTask extends Thread {
         BlockingQueue<URL> urls;
-        final List<URL> crawledURLs;
+        final List<Doc> crawledDocs;
         int threadNumber;
         boolean isFirst;
 
-        CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs, int threadNumber) {
+        CrawlTask(BlockingQueue<URL> urls, List<Doc> crawledDocs, int threadNumber) {
             this.urls = urls;
-            this.crawledURLs = crawledURLs;
+            this.crawledDocs = crawledDocs;
             this.threadNumber = threadNumber;
             this.isFirst = false;
         }
 
-        CrawlTask(BlockingQueue<URL> urls, List<URL> crawledURLs, int threadNumber, boolean isFirst) {
+        CrawlTask(BlockingQueue<URL> urls, List<Doc> crawledDocs, int threadNumber, boolean isFirst) {
             this.urls = urls;
-            this.crawledURLs = crawledURLs;
+            this.crawledDocs = crawledDocs;
             this.threadNumber = threadNumber;
             this.isFirst = isFirst;
         }
 
         @Override
         public void run() {
-            while(crawledURLs.size() < MAX_DOCUMENTS && !urls.isEmpty()){
+            while(crawledDocs.size() < MAX_DOCUMENTS && !urls.isEmpty()){
                 URL currentUrl;
                 try {
                     currentUrl = urls.take();
@@ -122,21 +123,22 @@ class Crawler {
             }
         }
 
-        // TODO: instead of filling with URLs, fill with Document with already set Content (avoid doing it in Indexer)
         void crawl(URL url) {
             try {
                 Connection.Response res = Jsoup.connect(url.toString()).execute();
                 if (res.contentType().contains("text/html")) {
                     Document doc = res.parse();
 
-                    if (crawledURLs.size() >= MAX_DOCUMENTS) return;
+                    if (crawledDocs.size() >= MAX_DOCUMENTS) return;
 
-                    Main.logger.trace("Crawled {} ({}/{})", url, crawledURLs.size() + 1, MAX_DOCUMENTS);
-                    crawledURLs.add(url);
+                    Main.logger.trace("Crawled {} ({}/{})", url, crawledDocs.size() + 1, MAX_DOCUMENTS);
+
+                    Doc crawledDoc = new Doc(url, null, doc.text(), null);
+                    crawledDocs.add(crawledDoc);
 
                     for (Element e: doc.select("a")){
                         URL newUrl = getProperUrl(url, e.attr("href"));
-                        if (newUrl != null && !crawledURLs.contains(newUrl) && !urls.contains(newUrl))
+                        if (newUrl != null && !crawledDocs.stream().anyMatch(d -> d.getUrl().equals(newUrl)) && !urls.contains(newUrl))
                             urls.add(newUrl);
                     }
                 }
@@ -146,7 +148,7 @@ class Crawler {
         }
     }
 
-    List<URL> getCrawledURLs() {
-        return crawledURLs;
+    List<Doc> getCrawledURLs() {
+        return crawledDocs;
     }
 }

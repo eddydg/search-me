@@ -2,6 +2,7 @@ package main;
 
 import io.vertx.core.Vertx;
 import io.vertx.core.VertxOptions;
+import main.Models.Doc;
 import main.Models.Index;
 import main.Models.Result;
 import org.apache.logging.log4j.Logger;
@@ -23,7 +24,7 @@ public class Main {
         Indexer indexer = new Indexer();
 
         String url = "https://en.wikipedia.org/wiki/Lidar";
-        List<URL> crawledUrls;
+        List<Doc> crawledUrls;
         try {
             Crawler crawler = new Crawler(new URL(url));
             crawler.run();

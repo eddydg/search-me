@@ -14,7 +14,6 @@ import java.nio.file.Files;
 import java.util.*;
 import java.util.concurrent.*;
 import java.util.stream.Collectors;
-import java.util.stream.IntStream;
 import java.util.stream.Stream;
 
 /**
@@ -28,11 +27,10 @@ public class Indexer {
 
     public HashMap<String, Integer> index;
 
-    public Index run(Stream<URL> urls) {
+    public Index run(Stream<Doc> urls) {
         double startTime = System.currentTimeMillis();
 
         List<Doc> res =  urls
-                .map(this::fetchDocument)
                 .map(this::tokenize)
                 .map(this::cleanup)
                 .map(this::reduce)
@@ -55,19 +53,6 @@ public class Indexer {
         double endTime = System.currentTimeMillis();
         Main.logger.trace("Index preparation ({}ms)", (endTime - startTime));
         return getIndex(res);
-    }
-
-    public Doc fetchDocument(URL url) {
-        String content = "";
-        try {
-            Document doc = Jsoup.connect(url.toString()).get();
-            content = doc.text();
-        } catch (UnsupportedMimeTypeException e) {
-            Main.logger.warn("Unsupported Mime Type: " + url);
-        } catch (IOException e) {
-            Main.logger.warn("HTTP error fetching URL: " + url);
-        }
-        return new Doc(url, null, content, null);
     }
 
     public Doc cleanup(Doc doc) {
