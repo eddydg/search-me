@@ -1,6 +1,7 @@
 package main.Models;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -12,11 +13,7 @@ public class Index {
     private List<Doc> docs;
 
     public Index() {
-        docs = new ArrayList<>();
-    }
-
-    public Index(List<Doc> docs) {
-        this.docs = docs;
+        docs = Collections.synchronizedList(new ArrayList<>());
     }
 
     public List<Doc> getDocs() {

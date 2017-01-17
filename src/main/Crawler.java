@@ -15,54 +15,43 @@ import java.util.concurrent.*;
 /**
  * Created by MeltedPenguin on 13/01/2017.
  */
-class Crawler {
+class Crawler implements Runnable{
 
-    private final int MAX_DOCUMENTS = 20;
+    private final int MAX_DOCUMENTS = 100000;
     private int poolSize = 10;
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
     private final BlockingQueue<URL> urls = new LinkedBlockingDeque<>();
-    private final List<Doc> crawledDocs = Collections.synchronizedList(new ArrayList<>());
+    private final BlockingQueue<Doc> crawledDocs;
 
-    public Crawler(URL url) throws InterruptedException {
+    public Crawler(URL url, BlockingQueue<Doc> crawledDocs) throws InterruptedException {
         urls.put(url);
+        this.crawledDocs = crawledDocs;
     }
 
-    public Crawler(URL url, int poolSize) throws InterruptedException {
+    public Crawler(URL url, BlockingQueue<Doc> crawledDocs, int poolSize) throws InterruptedException {
         urls.put(url);
         this.poolSize = poolSize;
+         this.crawledDocs = crawledDocs;
     }
 
-    void run() {
-        double startTime = System.currentTimeMillis();
-
+    @Override
+    public void run() {
         ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
-        int runningThreads = 1;
         do {
-            if (runningThreads < poolSize) {
-                CrawlTask ct = new CrawlTask(urls, crawledDocs, 0);
-                es.execute(ct);
-            }
-
-            if (urls.isEmpty()) {
+            if (((ThreadPoolExecutor) es).getActiveCount() >= poolSize || urls.isEmpty()) {
                 try {
                     Thread.sleep(50);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
                 }
+            } else {
+                CrawlTask ct = new CrawlTask(urls, crawledDocs, 0);
+                es.execute(ct);
             }
-            runningThreads = ((ThreadPoolExecutor) es).getActiveCount();
-        } while (runningThreads > 0);
 
-        es.shutdown();
-        try {
-            es.awaitTermination(Long.MAX_VALUE, TimeUnit.NANOSECONDS);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        double endTime = System.currentTimeMillis();
-        Main.logger.info("End Crawler ({}ms)", (endTime - startTime));
+        } while (true);
     }
 
     private URL getProperUrl(URL url, String href) {
@@ -90,22 +79,13 @@ class Crawler {
 
     class CrawlTask extends Thread {
         final BlockingQueue<URL> urls;
-        final List<Doc> crawledDocs;
+        final BlockingQueue<Doc> crawledDocs;
         int threadNumber;
-        boolean isFirst;
 
-        CrawlTask(BlockingQueue<URL> urls, List<Doc> crawledDocs, int threadNumber) {
+        CrawlTask(BlockingQueue<URL> urls, BlockingQueue<Doc> crawledDocs, int threadNumber) {
             this.urls = urls;
             this.crawledDocs = crawledDocs;
             this.threadNumber = threadNumber;
-            this.isFirst = false;
-        }
-
-        CrawlTask(BlockingQueue<URL> urls, List<Doc> crawledDocs, int threadNumber, boolean isFirst) {
-            this.urls = urls;
-            this.crawledDocs = crawledDocs;
-            this.threadNumber = threadNumber;
-            this.isFirst = isFirst;
         }
 
         @Override
@@ -120,8 +100,6 @@ class Crawler {
                 }
 
                 crawl(currentUrl);
-
-                if (isFirst) break;
             }
         }
 
@@ -145,16 +123,11 @@ class Crawler {
                                 !urls.contains(newUrl)) {
                             urls.add(newUrl);
                         }
-
                     }
                 }
             } catch (IOException e) {
                 Main.logger.error("Jsoup connect error on " + url.toString());
             }
         }
-    }
-
-    List<Doc> getCrawledURLs() {
-        return crawledDocs;
     }
 }

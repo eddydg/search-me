@@ -1,7 +1,5 @@
 package main;
 
-import io.vertx.core.Vertx;
-import io.vertx.core.VertxOptions;
 import main.Models.Doc;
 import main.Models.Index;
 import main.Models.Result;
@@ -10,7 +8,11 @@ import org.apache.logging.log4j.LogManager;
 
 import java.net.MalformedURLException;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingDeque;
 
 
 public class Main {
@@ -21,24 +23,28 @@ public class Main {
         long startTime = System.currentTimeMillis();
         logger.trace("Start app");
 
-        Indexer indexer = new Indexer();
-
         String url = "https://en.wikipedia.org/wiki/Lidar";
-        List<Doc> crawledUrls;
+
+
+        BlockingQueue<Doc> crawledDocs = new LinkedBlockingDeque<>();
+        Index index = new Index();
+        Indexer indexer = new Indexer(index, crawledDocs);
+
         try {
-            Crawler crawler = new Crawler(new URL(url));
-            crawler.run();
-            crawledUrls = crawler.getCrawledURLs();
+            Crawler crawler = new Crawler(new URL(url), crawledDocs);
+            Thread crawlerThread = new Thread(crawler);
+            crawlerThread.start();
+
+            Thread indexerThread = new Thread(indexer);
+            indexerThread.start();
         } catch (MalformedURLException | InterruptedException e) {
             e.printStackTrace();
             return;
         }
 
-        Index index = indexer.run(crawledUrls.stream());
-        if (index != null) {
-            Requester requester = new Requester(index, 5);
-            requester.prompt();
-        }
+        Requester requester = new Requester(index, 5);
+        requester.prompt();
+
 
         long endTime = System.currentTimeMillis();
         logger.trace("End app ({}ms)", (endTime - startTime));

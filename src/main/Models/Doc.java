@@ -2,6 +2,7 @@ package main.Models;
 
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 
@@ -13,18 +14,15 @@ public class Doc {
     private URL url;
     private List<Token> tokens;
     private String content;
-    private HashMap<String, Double> frequencies;
 
     public Doc() {
-        this.tokens = new ArrayList<>();
-        this.frequencies = new HashMap<>();
+        this.tokens = Collections.synchronizedList(new ArrayList<>());;
     }
 
     public Doc(URL url, List<Token> tokens, String content, HashMap frequencies) {
         this.url = url;
         this.tokens = tokens;
         this.content = content;
-        this.frequencies = frequencies;
     }
 
     @Override
@@ -33,7 +31,6 @@ public class Doc {
                 "url=" + url +
                 ", tokens=" + tokens +
                 ", content='" + content + '\'' +
-                ", frequencies=" + frequencies +
                 '}';
     }
 
@@ -65,11 +62,4 @@ public class Doc {
         this.content = content;
     }
 
-    public HashMap<String, Double> getFrequencies() {
-        return frequencies;
-    }
-
-    public void setFrequencies(HashMap<String, Double> frequencies) {
-        this.frequencies = frequencies;
-    }
 }

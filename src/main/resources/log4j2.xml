@@ -12,7 +12,7 @@
         -->
     </Appenders>
     <Loggers>
-        <Root level="trace">
+        <Root level="OFF">
             <AppenderRef ref="Console" />
             <!--<AppenderRef ref="MyFile"/>-->
         </Root>

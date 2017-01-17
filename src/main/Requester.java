@@ -15,7 +15,7 @@ public class Requester {
 
     private int maxResult = 10;
 
-    Index index;
+    private Index index;
 
     public Requester(Index index) {
         this.index = index;
@@ -42,9 +42,8 @@ public class Requester {
         long startTime = System.currentTimeMillis();
         Doc searchDoc = new Doc();
         searchDoc.setContent(keywords);
-        Indexer indexer = new Indexer();
-        searchDoc = indexer.tokenize(searchDoc);
-        searchDoc = indexer.reduce(searchDoc);
+        Indexer.tokenize(searchDoc);
+        Indexer.reduce(searchDoc);
 
         List<Result> results = find(searchDoc);
 
@@ -56,19 +55,13 @@ public class Requester {
 
     private List<Result> find(Doc searchDoc) {
         List<Result> results = new ArrayList<>();
-        for (Doc doc: index.getDocs()) {
-            Result result = new Result(doc);
-            double score = 0;
+        List<Doc> docs = index.getDocs();
 
-            for (Token token: searchDoc.getTokens()) {
-                if (doc.getFrequencies().containsKey(token.getValue())) {
-                    score += doc.getFrequencies().get(token.getValue());
-                }
-            }
-
-            result.setScore(score);
-            results.add(result);
-        }
+        docs.forEach(doc -> results.add(new Result(doc, searchDoc.getTokens().stream()
+                .map(t -> Indexer.getTfidf(t, doc, docs))
+                .mapToInt(Double::intValue)
+                .sum()))
+        );
 
         results.sort(Comparator.comparingDouble(Result::getScore).reversed());
 
