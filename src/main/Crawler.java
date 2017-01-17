@@ -18,7 +18,7 @@ import java.util.concurrent.*;
 class Crawler {
 
     private final int MAX_DOCUMENTS = 20;
-    private int poolSize = 5;
+    private int poolSize = 10;
     private final String URL_MATCH_REGEX = "((http(s)?://.)|(www\\.)).*";
 
     private final BlockingQueue<URL> urls = new LinkedBlockingDeque<>();
@@ -26,7 +26,6 @@ class Crawler {
 
     public Crawler(URL url) throws InterruptedException {
         urls.put(url);
-        this.poolSize = 5;
     }
 
     public Crawler(URL url, int poolSize) throws InterruptedException {
@@ -37,21 +36,24 @@ class Crawler {
     void run() {
         double startTime = System.currentTimeMillis();
 
-        // Let first Task fill `urls` otherwise next Tasks won't wait on empty list
-        Thread initThread = new Thread(new CrawlTask(urls, crawledDocs, 0, true));
-        initThread.run();
-        try {
-            initThread.join();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
         ExecutorService es = Executors.newFixedThreadPool(poolSize);
 
-        for (int i = 0; i < poolSize; i++) {
-            CrawlTask ct = new CrawlTask(urls, crawledDocs, i + 1);
-            es.execute(ct);
-        }
+        int runningThreads = 1;
+        do {
+            if (runningThreads < poolSize) {
+                CrawlTask ct = new CrawlTask(urls, crawledDocs, 0);
+                es.execute(ct);
+            }
+
+            if (urls.isEmpty()) {
+                try {
+                    Thread.sleep(50);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+            }
+            runningThreads = ((ThreadPoolExecutor) es).getActiveCount();
+        } while (runningThreads > 0);
 
         es.shutdown();
         try {
@@ -60,7 +62,7 @@ class Crawler {
             e.printStackTrace();
         }
         double endTime = System.currentTimeMillis();
-        Main.logger.trace("End Crawler ({}ms)", (endTime - startTime));
+        Main.logger.info("End Crawler ({}ms)", (endTime - startTime));
     }
 
     private URL getProperUrl(URL url, String href) {
@@ -87,7 +89,7 @@ class Crawler {
     }
 
     class CrawlTask extends Thread {
-        BlockingQueue<URL> urls;
+        final BlockingQueue<URL> urls;
         final List<Doc> crawledDocs;
         int threadNumber;
         boolean isFirst;
@@ -138,8 +140,12 @@ class Crawler {
 
                     for (Element e: doc.select("a")){
                         URL newUrl = getProperUrl(url, e.attr("href"));
-                        if (newUrl != null && !crawledDocs.stream().anyMatch(d -> d.getUrl().equals(newUrl)) && !urls.contains(newUrl))
+                        if (newUrl != null &&
+                                !crawledDocs.stream().anyMatch(d -> d.getUrl().equals(newUrl)) &&
+                                !urls.contains(newUrl)) {
                             urls.add(newUrl);
+                        }
+
                     }
                 }
             } catch (IOException e) {

@@ -36,10 +36,8 @@ public class Main {
 
         Index index = indexer.run(crawledUrls.stream());
         if (index != null) {
-            Requester requester = new Requester(index);
-            List<Result> results = requester.search("lidar");
-
-            results.forEach(System.out::println);
+            Requester requester = new Requester(index, 5);
+            requester.prompt();
         }
 
         long endTime = System.currentTimeMillis();
