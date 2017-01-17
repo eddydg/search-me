@@ -37,7 +37,7 @@ public class Indexer {
                 .collect(Collectors.toList());
 
         double endTime = System.currentTimeMillis();
-        Main.logger.trace("Index preparation ({}ms)", (endTime - startTime));
+        Main.logger.info("Index preparation ({}ms)", (endTime - startTime));
         return getIndex(res);
     }
 
@@ -114,13 +114,13 @@ public class Indexer {
     public double getTermFrequency(Token token, Doc doc) {
         double tokenCount = doc.getTokens().size();
         double result = doc.getTokens().parallelStream()
-                .filter(t -> t.getValue().equalsIgnoreCase(token.getValue()))
+                .filter(t -> t.getValue().equals(token.getValue()))
                 .count();
 
         return result / tokenCount;
     }
 
-    public double getInverseTermFrequency(Token token, List<Doc> docs) {
+    public double getInverseDocumentFrequency(Token token, List<Doc> docs) {
         double docCount = docs.size();
         double docWithTermCount = docs.parallelStream()
                 .filter(doc -> doc.containsWord(token.getValue()))
@@ -130,7 +130,7 @@ public class Indexer {
     }
 
     public double getTfidf(Token token, Doc doc, List<Doc> docs) {
-        return getTermFrequency(token, doc) * getInverseTermFrequency(token, docs);
+        return getTermFrequency(token, doc) * getInverseDocumentFrequency(token, docs);
     }
 
     public Index getIndex(List<Doc> docs) {
@@ -152,7 +152,7 @@ public class Indexer {
         }
 
         double endTime = System.currentTimeMillis();
-        Main.logger.trace("Calculated Index ({}ms)", (endTime - startTime));
+        Main.logger.info("Calculated Index ({}ms)", (endTime - startTime));
         return index;
     }
 
@@ -164,6 +164,7 @@ public class Indexer {
                     double tfidf = getTfidf(token, doc, docs);
                     frequencies.put(token.getValue(), tfidf);
                     token.setFrequence(tfidf);
+
                 });
 
         doc.setFrequencies(frequencies);
@@ -172,12 +173,12 @@ public class Indexer {
     class TfidfTask extends Thread {
         private final Doc doc;
         private final List<Doc> docs;
-        private final int threadNumber;
+        private final int docNumber;
 
-        public TfidfTask(Doc doc, List<Doc> docs, int threadNumber) {
+        public TfidfTask(Doc doc, List<Doc> docs, int docNumber) {
             this.doc = doc;
             this.docs = docs;
-            this.threadNumber = threadNumber;
+            this.docNumber = docNumber;
         }
 
         @Override
@@ -186,8 +187,13 @@ public class Indexer {
 
             calculateTfidf(doc, docs);
 
+            long processedDoc = docs.stream().filter(d -> d.getFrequencies() != null).count();
             double endTimeDoc = System.currentTimeMillis();
-            Main.logger.trace("Calculated TFIDF for {} ({}ms)", doc.getUrl(), (endTimeDoc - startTimeDoc));
+            Main.logger.trace("Calculated TFIDF for {} ({}ms) - ({}/{})",
+                    doc.getUrl(),
+                    (endTimeDoc - startTimeDoc),
+                    processedDoc,
+                    docs.size());
         }
     }
 
