@@ -1,15 +1,16 @@
 package main;
 
-import main.Models.Doc;
+import io.vertx.core.Vertx;
+import io.vertx.core.VertxOptions;
 import main.Models.Index;
 import main.Models.Result;
-import main.Models.Token;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.LogManager;
 
 import java.net.MalformedURLException;
 import java.net.URL;
-import java.util.*;
+import java.util.List;
+
 
 public class Main {
 
@@ -31,15 +32,8 @@ public class Main {
             e.printStackTrace();
             return;
         }
+
         Index index = indexer.run(crawledUrls.stream());
-
-        /*List<String> contents = new ArrayList<>(Arrays.asList(
-                "Lorem ipsum dolor ipsum sit ipsum",
-                "Vituperata incorrupte at ipsum pro quo",
-                "Has persius disputationi id simul"
-        ));
-        Index index = indexer.run(contents);*/
-
         if (index != null) {
             Requester requester = new Requester(index);
             List<Result> results = requester.search("lidar");

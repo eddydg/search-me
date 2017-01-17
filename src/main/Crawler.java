@@ -122,6 +122,7 @@ class Crawler {
             }
         }
 
+        // TODO: instead of filling with URLs, fill with Document with already set Content (avoid doing it in Indexer)
         void crawl(URL url) {
             try {
                 Connection.Response res = Jsoup.connect(url.toString()).execute();
@@ -135,7 +136,7 @@ class Crawler {
 
                     for (Element e: doc.select("a")){
                         URL newUrl = getProperUrl(url, e.attr("href"));
-                        if (newUrl != null && !crawledURLs.contains(newUrl)) // !urls.contains(newUrl)
+                        if (newUrl != null && !crawledURLs.contains(newUrl) && !urls.contains(newUrl))
                             urls.add(newUrl);
                     }
                 }
